@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pearl Global - Executive Operations Hub</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <!-- Chart.js 4 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- SheetJS for local/GitHub Pages Excel parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #1e40af;
+      --bg-surface: #f8fafc;
+      --border-color: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+    }
+    body {
+      background-color: var(--bg-surface);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: var(--text-main);
+      padding-top: 75px;
+    }
+
+    /* Clean Header Navigation (Only 3 Tabs) */
+    .top-navbar-clean {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 1050;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .header-nav-list {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      gap: 10px;
+      align-items: center;
+    }
+    .nav-btn-tab {
+      padding: 8px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #334155;
+      text-decoration: none;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: transparent;
+    }
+    .nav-btn-tab:hover {
+      background: #f1f5f9;
+      color: var(--primary);
+    }
+    .nav-btn-tab.active {
+      background: #eff6ff;
+      color: var(--primary);
+      border-color: #bfdbfe;
+      font-weight: 700;
+    }
+
+    /* Cards & Panels */
+    .filter-card, .kpi-card, .chart-card, .table-card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      margin-bottom: 20px;
+    }
+    .filter-card { padding: 16px 20px; }
+    .kpi-card { padding: 18px 20px; position: relative; }
+    .chart-card { padding: 20px; }
+    .table-card { padding: 18px 20px; }
+
+    .filter-label {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .kpi-title { font-size: 0.74rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .kpi-value { font-size: 1.6rem; font-weight: 700; color: var(--text-main); margin-top: 4px; }
+    .kpi-subtext { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; }
+    .kpi-icon {
+      position: absolute;
+      right: 18px;
+      top: 18px;
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .chart-box { position: relative; height: 380px; width: 100%; }
+
+    .table thead th {
+      background: #f8fafc;
+      color: #334155;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      white-space: nowrap;
+      padding: 10px 14px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+    .table tbody td { vertical-align: middle; font-size: 0.84rem; padding: 10px 14px; white-space: nowrap; }
+    .table tfoot th { background: #f8fafc; font-weight: 700; font-size: 0.86rem; border-top: 2px solid #94a3b8; padding: 12px 14px; }
+
+    .val-pill { display: inline-block; padding: 2px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem; }
+    .val-pill-target { background: #e0f2fe; color: #0369a1; }
+    .val-pill-actual { background: #dbeafe; color: #1e40af; }
+    .val-pill-warn { background: #ffedd5; color: #c2410c; }
+    .val-pill-danger { background: #fee2e2; color: #b91c1c; }
+    .val-pill-success { background: #dcfce7; color: #15803d; }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER MENU (Only the 3 required tabs) -->
+  <header class="top-navbar-clean">
+    <div class="d-flex align-items-center gap-4">
+      <span class="fw-bold fs-4 text-primary"><i class="fa-solid fa-gem me-2"></i>Pearl Global</span>
+
+      <ul class="header-nav-list">
+        <li>
+          <button type="button" class="nav-btn-tab active" id="btn-nav-shipment" onclick="switchModule('shipment')">
+            <i class="fa-solid fa-ship text-info"></i> Shipment Status
+          </button>
+        </li>
+        <li>
+          <button type="button" class="nav-btn-tab" id="btn-nav-wip" onclick="switchModule('wip')">
+            <i class="fa-solid fa-bars-staggered text-primary"></i> WIP Report
+          </button>
+        </li>
+        <li>
+          <button type="button" class="nav-btn-tab" id="btn-nav-eff" onclick="switchModule('eff')">
+            <i class="fa-solid fa-bolt text-warning"></i> Line Efficiency Summary Report
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Right File Status and Manual Switcher -->
+    <div class="d-flex align-items-center gap-3">
+      <span id="dataStatusBadge" class="badge bg-secondary-subtle text-secondary border px-3 py-2">
+        <i class="fa-solid fa-spinner fa-spin me-1"></i> Checking GitHub Files...
+      </span>
+      <label class="btn btn-outline-primary btn-sm mb-0">
+        <i class="fa-solid fa-folder-open me-1"></i> Switch File
+        <input type="file" id="localFileInput" accept=".xlsx, .xls, .csv" style="display: none;" multiple>
+      </label>
+    </div>
+  </header>
+
+  <main class="container-fluid px-4 py-3">
+
+    <!-- ========================================================================= -->
+    <!-- 1. SHIPMENT STATUS                                                        -->
+    <!-- ========================================================================= -->
+    <section id="module-shipment">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-ship me-2 text-info"></i>Shipment Status Dashboard</h4>
+          <span class="text-muted small">Tracking Deliveries, Balance Order Quantities &amp; OTIF Performance</span>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="fa fa-print me-1"></i> Print</button>
+      </div>
+
+      <div class="filter-card">
+        <div class="row g-3 align-items-end">
+          <div class="col-lg-3 col-md-6">
+            <label class="filter-label">Shipment Status</label>
+            <select class="form-select form-select-sm" id="shipStatusSelect" onchange="renderShipmentModule()"></select>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <label class="filter-label">Mode of Transport</label>
+            <select class="form-select form-select-sm" id="shipModeSelect" onchange="renderShipmentModule()"></select>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <label class="filter-label">Buyer</label>
+            <select class="form-select form-select-sm" id="shipBuyerSelect" onchange="renderShipmentModule()"></select>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <button class="btn btn-primary btn-sm w-100" onclick="renderShipmentModule()"><i class="fa-solid fa-filter me-1"></i> Apply Filters</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">On-Time In-Full (OTIF)</div>
+            <div class="kpi-value text-success" id="shipKpiOtif">0.0%</div>
+            <div class="kpi-subtext">Target: &ge; 90.0%</div>
+            <div class="kpi-icon bg-success-subtle text-success"><i class="fa-solid fa-certificate"></i></div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">Total Shipped Quantity</div>
+            <div class="kpi-value text-primary" id="shipKpiShipped">0 <span class="fs-6 fw-normal text-muted">pcs</span></div>
+            <div class="kpi-subtext" id="shipKpiTotalOrder">Total Orders: 0 pcs</div>
+            <div class="kpi-icon bg-primary-subtle text-primary"><i class="fa-solid fa-ship"></i></div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">Balance Left to Ship</div>
+            <div class="kpi-value text-warning" id="shipKpiBalance">0 <span class="fs-6 fw-normal text-muted">pcs</span></div>
+            <div class="kpi-subtext">In-factory pending handover</div>
+            <div class="kpi-icon bg-warning-subtle text-warning"><i class="fa-solid fa-dolly"></i></div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">Delayed / At-Risk Orders</div>
+            <div class="kpi-value text-danger" id="shipKpiRisk">0 <span class="fs-6 fw-normal text-muted">POs</span></div>
+            <div class="kpi-subtext text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Air Freight Conversion Risk</div>
+            <div class="kpi-icon bg-danger-subtle text-danger"><i class="fa-solid fa-plane-circle-exclamation"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h6 class="fw-bold mb-1">Buyer-wise Shipped vs Remaining Balance</h6>
+        <small class="text-muted d-block mb-3">Comparing delivered volumes against open balances per buyer account</small>
+        <div class="chart-box"><canvas id="shipmentChart"></canvas></div>
+      </div>
+
+      <div class="table-card">
+        <h6 class="fw-bold mb-3">Shipment Execution &amp; Dispatch Ledger</h6>
+        <div class="table-responsive">
+          <table class="table table-hover table-bordered mb-0">
+            <thead>
+              <tr><th>Plant</th><th>Buyer</th><th>PO Number</th><th>Style No</th><th class="text-end">Order Qty</th><th>Planned Ex-Factory</th><th>Actual Ship Date</th><th class="text-end">Shipped</th><th class="text-end">Balance</th><th class="text-center">Mode</th><th class="text-center">Status</th><th class="text-center">OTIF %</th></tr>
+            </thead>
+            <tbody id="shipTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 2. WIP REPORT                                                             -->
+    <!-- ========================================================================= -->
+    <section id="module-wip" style="display: none;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-bars-staggered me-2 text-primary"></i>Daily WIP Summary Report</h4>
+          <span class="text-muted small">Tracking Inventory Across Cutting, Sewing, Washing &amp; Finishing Stages</span>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="fa fa-print me-1"></i> Print</button>
+      </div>
+
+      <div class="filter-card">
+        <div class="row g-3 align-items-end">
+          <div class="col-lg-4 col-md-6">
+            <label class="filter-label">Buyer Filter</label>
+            <select class="form-select form-select-sm" id="wipBuyerSelect" onchange="renderWipModule()"></select>
+          </div>
+          <div class="col-lg-4 col-md-6">
+            <label class="filter-label">Style Search</label>
+            <input type="text" class="form-control form-control-sm" id="wipStyleSearch" placeholder="Filter by Style No..." onkeyup="renderWipModule()">
+          </div>
+          <div class="col-lg-4 col-md-12">
+            <button class="btn btn-primary btn-sm w-100" onclick="renderWipModule()"><i class="fa-solid fa-arrows-rotate me-1"></i> Refresh Summary</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">Total Active Floor WIP</div>
+            <div class="kpi-value text-dark" id="wipKpiTotal">0 <span class="fs-6 fw-normal text-muted">pcs</span></div>
+            <div class="kpi-subtext">Across All Production Stages</div>
+            <div class="kpi-icon bg-light text-primary"><i class="fa-solid fa-boxes-stacked"></i></div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">Sewing Line WIP</div>
+            <div class="kpi-value text-primary" id="wipKpiSewing">0 <span class="fs-6 fw-normal text-muted">pcs</span></div>
+            <div class="kpi-subtext" id="wipKpiSewingPct">0% of total active stock</div>
+            <div class="kpi-icon bg-primary-subtle text-primary"><i class="fa-solid fa-stapler"></i></div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">Washing &amp; Finishing WIP</div>
+            <div class="kpi-value text-warning" id="wipKpiFinishing">0 <span class="fs-6 fw-normal text-muted">pcs</span></div>
+            <div class="kpi-subtext">Post-sewing assembly stage</div>
+            <div class="kpi-icon bg-warning-subtle text-warning"><i class="fa-solid fa-wind"></i></div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">Ready Packed (FGI)</div>
+            <div class="kpi-value text-success" id="wipKpiPacked">0 <span class="fs-6 fw-normal text-muted">pcs</span></div>
+            <div class="kpi-subtext">Available for final QA audit</div>
+            <div class="kpi-icon bg-success-subtle text-success"><i class="fa-solid fa-box-open"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h6 class="fw-bold mb-1">Production Pipeline WIP Breakdown (Funnel Flow)</h6>
+        <small class="text-muted d-block mb-3">Monitoring stock accumulation by stage to prevent line starvation</small>
+        <div class="chart-box"><canvas id="wipFunnelChart"></canvas></div>
+      </div>
+
+      <div class="table-card">
+        <h6 class="fw-bold mb-3">Style-wise Daily WIP Ledger</h6>
+        <div class="table-responsive">
+          <table class="table table-hover table-bordered mb-0">
+            <thead>
+              <tr><th>Buyer</th><th>Style No</th><th class="text-end">Order Qty</th><th class="text-end">Cutting Out</th><th class="text-end">Cut WIP</th><th class="text-end">Sewing In</th><th class="text-end">Sewing WIP</th><th class="text-end">Sewing Out</th><th class="text-end">Finishing WIP</th><th class="text-end">Packed</th></tr>
+            </thead>
+            <tbody id="wipTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 3. LINE EFFICIENCY SUMMARY REPORT                                         -->
+    <!-- ========================================================================= -->
+    <section id="module-eff" style="display: none;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h4 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-bolt me-2 text-warning"></i>Line Efficiency Summary Report</h4>
+          <span class="text-muted small">Daily Line-wise Target Output, Produced Minutes vs Available Minutes</span>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="fa fa-print me-1"></i> Print</button>
+      </div>
+
+      <div class="filter-card">
+        <div class="row g-3 align-items-end">
+          <div class="col-lg-3 col-md-6">
+            <label class="filter-label">Manufacturing Plant</label>
+            <select class="form-select form-select-sm" id="effPlantSelect" onchange="renderEfficiencyModule()"></select>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <label class="filter-label">Floor</label>
+            <select class="form-select form-select-sm" id="effFloorSelect" onchange="renderEfficiencyModule()"></select>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <label class="filter-label">Buyer</label>
+            <select class="form-select form-select-sm" id="effBuyerSelect" onchange="renderEfficiencyModule()"></select>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <button class="btn btn-primary btn-sm w-100" onclick="renderEfficiencyModule()"><i class="fa-solid fa-filter me-1"></i> Refresh</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">Average Line Efficiency</div>
+            <div class="kpi-value text-success" id="effKpiRate">0.0%</div>
+            <div class="kpi-subtext">Target: &ge; 70.0%</div>
+            <div class="kpi-icon bg-success-subtle text-success"><i class="fa-solid fa-gauge-high"></i></div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">Actual Output vs Target</div>
+            <div class="kpi-value text-primary" id="effKpiOutput">0 <span class="fs-6 fw-normal text-muted">pcs</span></div>
+            <div class="kpi-subtext" id="effKpiVariance">Variance: 0 pcs</div>
+            <div class="kpi-icon bg-primary-subtle text-primary"><i class="fa-solid fa-shirt"></i></div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">Earned vs Available Mins</div>
+            <div class="kpi-value" id="effKpiMins">0 <span class="fs-6 fw-normal text-muted">mins</span></div>
+            <div class="kpi-subtext" id="effKpiIdleMins">0 Off-Standard / Idle Mins</div>
+            <div class="kpi-icon bg-light text-primary"><i class="fa-solid fa-stopwatch"></i></div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+          <div class="kpi-card">
+            <div class="kpi-title">Quality Defect Rate (DHU)</div>
+            <div class="kpi-value text-warning" id="effKpiDHU">0.0%</div>
+            <div class="kpi-subtext">Target: &le; 3.0%</div>
+            <div class="kpi-icon bg-warning-subtle text-warning"><i class="fa-solid fa-shield-virus"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h6 class="fw-bold mb-0">Sewing Line Efficiency &amp; Target Tracking</h6>
+            <small class="text-muted">Line Efficiency % against 70% Target Benchmark</small>
+          </div>
+          <span class="badge bg-light text-dark border px-3 py-2">Benchmark: <strong>70%</strong></span>
+        </div>
+        <div class="chart-box"><canvas id="efficiencyChart"></canvas></div>
+      </div>
+
+      <div class="table-card">
+        <h6 class="fw-bold mb-3">Line Efficiency Performance Ledger</h6>
+        <div class="table-responsive">
+          <table class="table table-hover table-bordered mb-0">
+            <thead>
+              <tr><th>Line No</th><th>Floor</th><th>Buyer</th><th>Style No</th><th class="text-end">SAM</th><th class="text-end">Operators</th><th class="text-end">Target Pcs</th><th class="text-end">Output</th><th class="text-end">Prod Mins</th><th class="text-end">Avail Mins</th><th class="text-center">Eff %</th><th class="text-center">DHU %</th></tr>
+            </thead>
+            <tbody id="effTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Tab switching
+    function switchModule(moduleName) {
+      document.querySelectorAll('.nav-btn-tab').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('module-shipment').style.display = 'none';
+      document.getElementById('module-wip').style.display = 'none';
+      document.getElementById('module-eff').style.display = 'none';
+
+      if (moduleName === 'shipment') {
+        document.getElementById('btn-nav-shipment').classList.add('active');
+        document.getElementById('module-shipment').style.display = 'block';
+        if (shipChart) shipChart.resize();
+      } else if (moduleName === 'wip') {
+        document.getElementById('btn-nav-wip').classList.add('active');
+        document.getElementById('module-wip').style.display = 'block';
+        if (wipChart) wipChart.resize();
+      } else if (moduleName === 'eff') {
+        document.getElementById('btn-nav-eff').classList.add('active');
+        document.getElementById('module-eff').style.display = 'block';
+        if (effChart) effChart.resize();
+      }
+    }
+
+    // Baseline Datasets
+    let efficiencyData = [
+      { line: 'Line 01', floor: 'Floor 1', plant: 'Plant 1', buyer: 'KOHLS INC', style: 'KH-8801', sam: 20.0, operators: 35, target: 800, output: 720, dhu: 2.8 },
+      { line: 'Line 02', floor: 'Floor 1', plant: 'Plant 1', buyer: 'KOHLS INC', style: 'KH-8802', sam: 22.0, operators: 36, target: 750, output: 710, dhu: 3.1 },
+      { line: 'Line 03', floor: 'Floor 1', plant: 'Plant 1', buyer: 'Target Corp', style: 'TG-1044', sam: 18.0, operators: 30, target: 900, output: 860, dhu: 2.2 },
+      { line: 'Line 04', floor: 'Floor 2', plant: 'Plant 1', buyer: 'Target Corp', style: 'TG-1055', sam: 25.0, operators: 40, target: 700, output: 520, dhu: 4.8 },
+      { line: 'Line 05', floor: 'Floor 2', plant: 'Plant 1', buyer: 'Gap Inc', style: 'GP-9011', sam: 24.0, operators: 38, target: 750, output: 690, dhu: 3.2 },
+      { line: 'Line 06', floor: 'Floor 2', plant: 'Plant 1', buyer: 'Gap Inc', style: 'GP-9022', sam: 19.5, operators: 34, target: 850, output: 810, dhu: 2.9 },
+      { line: 'Line 07', floor: 'Floor 1', plant: 'Plant 2', buyer: 'Aritzia', style: 'AR-3033', sam: 28.0, operators: 42, target: 600, output: 560, dhu: 2.5 }
+    ];
+
+    let wipData = [
+      { buyer: 'KOHLS INC', style: 'KH-8801', order: 25000, cutOut: 25000, cutWip: 1500, sewIn: 23500, sewWip: 4500, sewOut: 19000, finWip: 3200, packed: 15800 },
+      { buyer: 'KOHLS INC', style: 'KH-8802', order: 18000, cutOut: 18000, cutWip: 800, sewIn: 17200, sewWip: 3800, sewOut: 13400, finWip: 2400, packed: 11000 },
+      { buyer: 'Target Corp', style: 'TG-1044', order: 30000, cutOut: 30000, cutWip: 2200, sewIn: 27800, sewWip: 5100, sewOut: 22700, finWip: 4100, packed: 18600 },
+      { buyer: 'Target Corp', style: 'TG-1055', order: 12000, cutOut: 10500, cutWip: 2800, sewIn: 7700, sewWip: 2900, sewOut: 4800, finWip: 1800, packed: 3000 },
+      { buyer: 'Gap Inc', style: 'GP-9011', order: 20000, cutOut: 20000, cutWip: 1100, sewIn: 18900, sewWip: 3400, sewOut: 15500, finWip: 2100, packed: 13400 }
+    ];
+
+    let shipmentData = [
+      { plant: 'Plant 1', buyer: 'KOHLS INC', po: 'PO-770192', style: 'KH-8801', qty: 50000, plannedDate: '2026-09-18', actualDate: '2026-09-18', shipped: 50000, balance: 0, mode: 'Sea', status: 'Shipped', otif: 100 },
+      { plant: 'Plant 1', buyer: 'KOHLS INC', po: 'PO-770193', style: 'KH-8802', qty: 65000, plannedDate: '2026-09-24', actualDate: '2026-09-25', shipped: 60000, balance: 5000, mode: 'Sea', status: 'At Risk', otif: 85 },
+      { plant: 'Plant 1', buyer: 'Target Corp', po: 'PO-881204', style: 'TG-1044', qty: 45000, plannedDate: '2026-09-28', actualDate: '-', shipped: 38000, balance: 7000, mode: 'Sea', status: 'On Track', otif: 94 },
+      { plant: 'Plant 1', buyer: 'Target Corp', po: 'PO-881205', style: 'TG-1055', qty: 20000, plannedDate: '2026-09-20', actualDate: '-', shipped: 8000, balance: 12000, mode: 'Air', status: 'At Risk', otif: 60 },
+      { plant: 'Plant 2', buyer: 'Gap Inc', po: 'PO-992110', style: 'GP-9011', qty: 70000, plannedDate: '2026-09-15', actualDate: '2026-09-15', shipped: 70000, balance: 0, mode: 'Sea', status: 'Shipped', otif: 100 },
+      { plant: 'Plant 2', buyer: 'Gap Inc', po: 'PO-992111', style: 'GP-9022', qty: 30000, plannedDate: '2026-10-05', actualDate: '-', shipped: 22000, balance: 8000, mode: 'Sea', status: 'On Track', otif: 92 }
+    ];
+
+    let effChart = null, wipChart = null, shipChart = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      autoLoadGitHubExcelFiles();
+      setupManualFileInput();
+    });
+
+    // Auto-fetch the 3 Excel files from the GitHub repository directory
+    async function autoLoadGitHubExcelFiles() {
+      const filesToFetch = [
+        { name: 'SQL_shipmentstatus_fields.xlsx', type: 'shipment' },
+        { name: 'SQL_dailyWIPsummary_Structure.xlsx', type: 'wip' },
+        { name: 'MSSQL_LineEfficiency_PrdDate.xlsx', type: 'efficiency' }
+      ];
+
+      let loadedCount = 0;
+      for (const item of filesToFetch) {
+        try {
+          const resp = await fetch('./' + item.name);
+          if (resp.ok) {
+            const buffer = await resp.arrayBuffer();
+            parseExcelBuffer(buffer, item.name, item.type);
+            loadedCount++;
+          }
+        } catch (e) {}
+      }
+
+      if (loadedCount > 0) {
+        document.getElementById('dataStatusBadge').className = 'badge bg-success-subtle text-success border px-3 py-2';
+        document.getElementById('dataStatusBadge').innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> Live GitHub Data (${loadedCount}/3 Files)`;
+      } else {
+        document.getElementById('dataStatusBadge').className = 'badge bg-info-subtle text-info border px-3 py-2';
+        document.getElementById('dataStatusBadge').innerHTML = `<i class="fa-solid fa-chart-pie me-1"></i> Running Sample Data`;
+      }
+
+      populateAllFilters();
+      renderShipmentModule();
+      renderWipModule();
+      renderEfficiencyModule();
+    }
+
+    // Manual fallback file selector
+    function setupManualFileInput() {
+      document.getElementById('localFileInput').addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        files.forEach(file => {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const fname = file.name.toLowerCase();
+            let type = 'shipment';
+            if (fname.includes('wip')) type = 'wip';
+            else if (fname.includes('eff') || fname.includes('line')) type = 'efficiency';
+
+            parseExcelBuffer(evt.target.result, file.name, type);
+            populateAllFilters();
+            renderShipmentModule();
+            renderWipModule();
+            renderEfficiencyModule();
+
+            document.getElementById('dataStatusBadge').className = 'badge bg-success-subtle text-success border px-3 py-2';
+            document.getElementById('dataStatusBadge').innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> Custom File Loaded`;
+          };
+          reader.readAsArrayBuffer(file);
+        });
+      });
+    }
+
+    function parseExcelBuffer(buffer, filename, type) {
+      try {
+        const wb = XLSX.read(buffer, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+        if (!rows || rows.length === 0) return;
+
+        if (type === 'shipment') {
+          shipmentData = rows.map(r => ({
+            plant: r.Plant || r.plant || 'Plant 1',
+            buyer: r.Buyer || r.buyer || 'KOHLS INC',
+            po: r['PO Number'] || r.po || 'PO-001',
+            style: r['Style No'] || r.style || 'ST-101',
+            qty: parseFloat(r['Order Qty'] || r.qty) || 10000,
+            plannedDate: r['Planned Ex-Factory'] || r.plannedDate || '2026-09-30',
+            actualDate: r['Actual Ship Date'] || r.actualDate || '-',
+            shipped: parseFloat(r['Shipped Qty'] || r.shipped) || 0,
+            balance: parseFloat(r['Balance Qty'] || r.balance) || 0,
+            mode: r.Mode || r.mode || 'Sea',
+            status: r.Status || r.status || 'On Track',
+            otif: parseFloat(r['OTIF %'] || r.otif) || 90
+          }));
+        } else if (type === 'wip') {
+          wipData = rows.map(r => ({
+            buyer: r.Buyer || r.buyer || 'KOHLS INC',
+            style: r['Style No'] || r.style || 'ST-101',
+            order: parseFloat(r['Order Qty'] || r.order) || 10000,
+            cutOut: parseFloat(r['Cutting Out'] || r.cutOut) || 0,
+            cutWip: parseFloat(r['Cut WIP'] || r.cutWip) || 0,
+            sewIn: parseFloat(r['Sewing In'] || r.sewIn) || 0,
+            sewWip: parseFloat(r['Sewing WIP'] || r.sewWip) || 0,
+            sewOut: parseFloat(r['Sewing Out'] || r.sewOut) || 0,
+            finWip: parseFloat(r['Finishing WIP'] || r.finWip) || 0,
+            packed: parseFloat(r.Packed || r.packed) || 0
+          }));
+        } else if (type === 'efficiency') {
+          efficiencyData = rows.map(r => ({
+            line: r['Line No'] || r.line || 'Line 01',
+            floor: r.Floor || r.floor || 'Floor 1',
+            plant: r.Plant || r.plant || 'Plant 1',
+            buyer: r.Buyer || r.buyer || 'KOHLS INC',
+            style: r['Style No'] || r.style || 'ST-101',
+            sam: parseFloat(r.SAM || r.sam) || 20,
+            operators: parseFloat(r.Operators || r.operators) || 35,
+            target: parseFloat(r['Target Pcs'] || r.target) || 800,
+            output: parseFloat(r['Output Pcs'] || r.output) || 720,
+            dhu: parseFloat(r['DHU %'] || r.dhu) || 2.5
+          }));
+        }
+      } catch (err) {}
+    }
+
+    function populateAllFilters() {
+      // 1. Shipment Filters
+      const sStatuses = ['ALL', ...new Set(shipmentData.map(d => d.status))];
+      document.getElementById('shipStatusSelect').innerHTML = sStatuses.map(s => `<option value="${s}">${s}</option>`).join('');
+      const sModes = ['ALL', ...new Set(shipmentData.map(d => d.mode))];
+      document.getElementById('shipModeSelect').innerHTML = sModes.map(s => `<option value="${s}">${s}</option>`).join('');
+      const sBuyers = ['ALL', ...new Set(shipmentData.map(d => d.buyer))];
+      document.getElementById('shipBuyerSelect').innerHTML = sBuyers.map(s => `<option value="${s}">${s}</option>`).join('');
+
+      // 2. WIP Filters
+      const wBuyers = ['ALL', ...new Set(wipData.map(d => d.buyer))];
+      document.getElementById('wipBuyerSelect').innerHTML = wBuyers.map(s => `<option value="${s}">${s}</option>`).join('');
+
+      // 3. Efficiency Filters
+      const ePlants = ['ALL', ...new Set(efficiencyData.map(d => d.plant))];
+      document.getElementById('effPlantSelect').innerHTML = ePlants.map(s => `<option value="${s}">${s}</option>`).join('');
+      const eFloors = ['ALL', ...new Set(efficiencyData.map(d => d.floor))];
+      document.getElementById('effFloorSelect').innerHTML = eFloors.map(s => `<option value="${s}">${s}</option>`).join('');
+      const eBuyers = ['ALL', ...new Set(efficiencyData.map(d => d.buyer))];
+      document.getElementById('effBuyerSelect').innerHTML = eBuyers.map(s => `<option value="${s}">${s}</option>`).join('');
+    }
+
+    // 1. Render Shipment
+    function renderShipmentModule() {
+      const statusFilter = document.getElementById('shipStatusSelect').value;
+      const modeFilter = document.getElementById('shipModeSelect').value;
+      const buyerFilter = document.getElementById('shipBuyerSelect').value;
+
+      let rows = shipmentData;
+      if (statusFilter !== 'ALL') rows = rows.filter(r => r.status === statusFilter);
+      if (modeFilter !== 'ALL') rows = rows.filter(r => r.mode === modeFilter);
+      if (buyerFilter !== 'ALL') rows = rows.filter(r => r.buyer === buyerFilter);
+
+      let totalOrder = 0, totalShipped = 0, totalBalance = 0, otifSum = 0, riskCount = 0;
+      const buyers = [...new Set(rows.map(r => r.buyer))];
+      const buyerShipped = {}, buyerBalance = {};
+      buyers.forEach(b => { buyerShipped[b] = 0; buyerBalance[b] = 0; });
+
+      const tbody = document.getElementById('shipTableBody');
+      tbody.innerHTML = '';
+
+      rows.forEach(r => {
+        totalOrder += r.qty;
+        totalShipped += r.shipped;
+        totalBalance += r.balance;
+        otifSum += r.otif;
+        if (r.status === 'At Risk') riskCount++;
+
+        buyerShipped[r.buyer] += r.shipped;
+        buyerBalance[r.buyer] += r.balance;
+
+        const badgeClass = r.status === 'Shipped' ? 'val-pill-success' : (r.status === 'On Track' ? 'val-pill-actual' : 'val-pill-danger');
+        tbody.innerHTML += `
+          <tr>
+            <td>${r.plant}</td>
+            <td><strong>${r.buyer}</strong></td>
+            <td><code>${r.po}</code></td>
+            <td>${r.style}</td>
+            <td class="text-end">${r.qty.toLocaleString()}</td>
+            <td>${r.plannedDate}</td>
+            <td>${r.actualDate}</td>
+            <td class="text-end fw-bold text-primary">${r.shipped.toLocaleString()}</td>
+            <td class="text-end fw-bold text-warning">${r.balance.toLocaleString()}</td>
+            <td class="text-center"><span class="badge ${r.mode === 'Air' ? 'bg-danger' : 'bg-info text-dark'}">${r.mode}</span></td>
+            <td class="text-center"><span class="val-pill ${badgeClass}">${r.status}</span></td>
+            <td class="text-center fw-bold ${r.otif >= 90 ? 'text-success' : 'text-danger'}">${r.otif}%</td>
+          </tr>
+        `;
+      });
+
+      const avgOtif = rows.length > 0 ? (otifSum / rows.length).toFixed(1) : '0.0';
+      document.getElementById('shipKpiOtif').textContent = `${avgOtif}%`;
+      document.getElementById('shipKpiShipped').innerHTML = `${totalShipped.toLocaleString()} <span class="fs-6 fw-normal text-muted">pcs</span>`;
+      document.getElementById('shipKpiTotalOrder').textContent = `Total Orders: ${totalOrder.toLocaleString()} pcs`;
+      document.getElementById('shipKpiBalance').innerHTML = `${totalBalance.toLocaleString()} <span class="fs-6 fw-normal text-muted">pcs</span>`;
+      document.getElementById('shipKpiRisk').innerHTML = `${riskCount} <span class="fs-6 fw-normal text-muted">POs</span>`;
+
+      const ctx = document.getElementById('shipmentChart').getContext('2d');
+      if (shipChart) shipChart.destroy();
+      shipChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: buyers,
+          datasets: [
+            { label: 'Shipped Qty', data: buyers.map(b => buyerShipped[b]), backgroundColor: '#2563eb', borderRadius: 4 },
+            { label: 'Remaining Balance', data: buyers.map(b => buyerBalance[b]), backgroundColor: '#f59e0b', borderRadius: 4 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, ticks: { callback: v => (v >= 1000 ? (v / 1000) + 'k' : v) } }
+          }
+        }
+      });
+    }
+
+    // 2. Render WIP
+    function renderWipModule() {
+      const buyerFilter = document.getElementById('wipBuyerSelect').value;
+      const styleSearch = document.getElementById('wipStyleSearch').value.toLowerCase();
+
+      let rows = wipData;
+      if (buyerFilter !== 'ALL') rows = rows.filter(r => r.buyer === buyerFilter);
+      if (styleSearch) rows = rows.filter(r => r.style.toLowerCase().includes(styleSearch));
+
+      let sumSewingWip = 0, sumFinWip = 0, sumPacked = 0, sumTotalWip = 0;
+      const tbody = document.getElementById('wipTableBody');
+      tbody.innerHTML = '';
+
+      rows.forEach(r => {
+        const activeWip = r.cutWip + r.sewWip + r.finWip;
+        sumSewingWip += r.sewWip;
+        sumFinWip += r.finWip;
+        sumPacked += r.packed;
+        sumTotalWip += activeWip;
+
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${r.buyer}</strong></td>
+            <td><code>${r.style}</code></td>
+            <td class="text-end">${r.order.toLocaleString()}</td>
+            <td class="text-end">${r.cutOut.toLocaleString()}</td>
+            <td class="text-end text-muted">${r.cutWip.toLocaleString()}</td>
+            <td class="text-end">${r.sewIn.toLocaleString()}</td>
+            <td class="text-end fw-bold text-primary">${r.sewWip.toLocaleString()}</td>
+            <td class="text-end">${r.sewOut.toLocaleString()}</td>
+            <td class="text-end fw-bold text-warning">${r.finWip.toLocaleString()}</td>
+            <td class="text-end fw-bold text-success">${r.packed.toLocaleString()}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('wipKpiTotal').innerHTML = `${sumTotalWip.toLocaleString()} <span class="fs-6 fw-normal text-muted">pcs</span>`;
+      document.getElementById('wipKpiSewing').innerHTML = `${sumSewingWip.toLocaleString()} <span class="fs-6 fw-normal text-muted">pcs</span>`;
+      const sewPct = sumTotalWip > 0 ? ((sumSewingWip / sumTotalWip) * 100).toFixed(1) : 0;
+      document.getElementById('wipKpiSewingPct').textContent = `${sewPct}% of total active stock`;
+      document.getElementById('wipKpiFinishing').innerHTML = `${sumFinWip.toLocaleString()} <span class="fs-6 fw-normal text-muted">pcs</span>`;
+      document.getElementById('wipKpiPacked').innerHTML = `${sumPacked.toLocaleString()} <span class="fs-6 fw-normal text-muted">pcs</span>`;
+
+      const ctx = document.getElementById('wipFunnelChart').getContext('2d');
+      if (wipChart) wipChart.destroy();
+      wipChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Cutting Output', 'Sewing Input', 'Sewing Line WIP', 'Sewing Output', 'Finishing WIP', 'Ready Packed'],
+          datasets: [{
+            label: 'Stage Volume (Pcs)',
+            data: [
+              rows.reduce((s, r) => s + r.cutOut, 0),
+              rows.reduce((s, r) => s + r.sewIn, 0),
+              sumSewingWip,
+              rows.reduce((s, r) => s + r.sewOut, 0),
+              sumFinWip,
+              sumPacked
+            ],
+            backgroundColor: ['#0284c7', '#3b82f6', '#f59e0b', '#10b981', '#f97316', '#16a34a'],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: v => (v >= 1000 ? (v / 1000) + 'k' : v) } }
+          }
+        }
+      });
+    }
+
+    // 3. Render Efficiency
+    function renderEfficiencyModule() {
+      const plantFilter = document.getElementById('effPlantSelect').value;
+      const floorFilter = document.getElementById('effFloorSelect').value;
+      const buyerFilter = document.getElementById('effBuyerSelect').value;
+
+      let rows = efficiencyData;
+      if (plantFilter !== 'ALL') rows = rows.filter(r => r.plant === plantFilter);
+      if (floorFilter !== 'ALL') rows = rows.filter(r => r.floor === floorFilter);
+      if (buyerFilter !== 'ALL') rows = rows.filter(r => r.buyer === buyerFilter);
+
+      let totalTarget = 0, totalOutput = 0, totalProducedMins = 0, totalAvailMins = 0, totalDhu = 0;
+      const lines = [], effRates = [];
+
+      const tbody = document.getElementById('effTableBody');
+      tbody.innerHTML = '';
+
+      rows.forEach(r => {
+        const availMins = r.operators * 8 * 60;
+        const producedMins = r.output * r.sam;
+        const eff = availMins > 0 ? ((producedMins / availMins) * 100) : 0;
+
+        totalTarget += r.target;
+        totalOutput += r.output;
+        totalAvailMins += availMins;
+        totalProducedMins += producedMins;
+        totalDhu += r.dhu;
+
+        lines.push(r.line);
+        effRates.push(eff.toFixed(1));
+
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${r.line}</strong></td>
+            <td>${r.floor}</td>
+            <td>${r.buyer}</td>
+            <td><code>${r.style}</code></td>
+            <td class="text-end">${r.sam.toFixed(1)}</td>
+            <td class="text-end">${r.operators}</td>
+            <td class="text-end"><span class="val-pill val-pill-target">${r.target.toLocaleString()}</span></td>
+            <td class="text-end"><span class="val-pill val-pill-actual">${r.output.toLocaleString()}</span></td>
+            <td class="text-end">${Math.round(producedMins).toLocaleString()}</td>
+            <td class="text-end">${availMins.toLocaleString()}</td>
+            <td class="text-center fw-bold ${eff >= 70 ? 'text-success' : 'text-danger'}">${eff.toFixed(1)}%</td>
+            <td class="text-center text-muted">${r.dhu}%</td>
+          </tr>
+        `;
+      });
+
+      const avgEff = totalAvailMins > 0 ? ((totalProducedMins / totalAvailMins) * 100).toFixed(1) : '0.0';
+      const avgDhu = rows.length > 0 ? (totalDhu / rows.length).toFixed(1) : '0.0';
+      const variance = totalOutput - totalTarget;
+
+      document.getElementById('effKpiRate').textContent = `${avgEff}%`;
+      document.getElementById('effKpiOutput').innerHTML = `${totalOutput.toLocaleString()} <span class="fs-6 fw-normal text-muted">/ ${totalTarget.toLocaleString()} pcs</span>`;
+      document.getElementById('effKpiVariance').textContent = `Variance: ${variance >= 0 ? '+' : ''}${variance.toLocaleString()} pcs`;
+      document.getElementById('effKpiMins').innerHTML = `${Math.round(totalProducedMins).toLocaleString()} <span class="fs-6 fw-normal text-muted">/ ${totalAvailMins.toLocaleString()}</span>`;
+      const idleMins = Math.max(0, totalAvailMins - totalProducedMins);
+      document.getElementById('effKpiIdleMins').textContent = `${Math.round(idleMins).toLocaleString()} Off-Standard / Idle Mins`;
+      document.getElementById('effKpiDHU').textContent = `${avgDhu}%`;
+
+      const ctx = document.getElementById('efficiencyChart').getContext('2d');
+      if (effChart) effChart.destroy();
+      effChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: lines,
+          datasets: [{
+            label: 'Line Efficiency %',
+            data: effRates,
+            backgroundColor: effRates.map(v => v >= 70 ? '#10b981' : '#ef4444'),
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } }
+          }
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>
